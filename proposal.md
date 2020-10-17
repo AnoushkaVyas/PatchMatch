@@ -41,7 +41,7 @@ The algorithm initialises the patch locations by sampling from a uniform random 
 
    If pos = f(x, y) (remember this provide position of the closest patch in image B to the (x, y) of image A). 
 
-    <img src="https://latex.codecogs.com/gif.latex?pos_{new} = pos + w\alpha^{i}R_{i}" />
+    pos_new = pos + w*a^{i}*R
 
    pos_new gives use the new location to search over. R is uniform random in [-1, 1] x [-1, 1]. We search till wa^{i} is smaller than 1 pixel. Here a=1/2.
 

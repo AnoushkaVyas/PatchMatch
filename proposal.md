@@ -15,16 +15,13 @@
 ### Main Goal(s) of the project
 The main objective of this project is to present interactive image editing tools using a new randomized algorithm for quickly finding approximate nearest neighbor matches between image patches. This one simple algorithm forms the basis for a variety of tools – image retargeting, completion and reshuffling – that can be used together in the context of a high-level image editing application. One more feature is additional intuitive constraints on the synthesis process that offer the user a level of control unavailable in any other methods.
 
-
-The PatchMatch paper proposes a novel patch matching algorithm that is simple yet efficient and fast. The algorithm initialises the patch locations by sampling from a uniform random distribution of locations and assigns the initial patch matching error.
-
 #### Notations
 
 f(x, y) determines the location of the patch in image **B** that is closest to the patch at the location (x, y) in image **A**. D(A[x, y]. B[f(x,y)]) determines the distance (can be mean L1 cost)  between the patches of image **A** and image **B**. Here, A[x,y] and B[x,y] determine the patch with center at (x,y) in image A and image B.
 
 #### Algorithm
 
-The algorithm iteratively finds the closest matching patch in a 2 step process:
+The algorithm initialises the patch locations by sampling from a uniform random distribution of locations and assigns the initial patch matching error. It then iteratively finds the closest matching patch in a 2 step process:
 
 1. **Propagation:**
 

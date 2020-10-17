@@ -25,7 +25,7 @@ f(x, y) determines the location of the patch in image **B** that is closest to t
 
 The algorithm initialises the patch locations by sampling from a uniform random distribution of locations and assigns the initial patch matching error. It then iteratively finds the closest matching patch in a 2 step process:
 
-![Initialization](./images/initialization.png)
+<img align="center" src="./images/initialization.png">
 
 1. **Propagation:**
 
@@ -33,7 +33,7 @@ The algorithm initialises the patch locations by sampling from a uniform random 
 
    The final distance D = min(D(A[x, y]. B[f(x,y)]), D(A[x, y]. B[f(x - 1,y)]), D(A[x, y]. B[f(x,y - 1)])).  
 
-   ![Propagation](./images/propagation.png)
+   <img align="center" src="./images/propagation.png">
 
 2. **Random search:**
 
@@ -45,13 +45,13 @@ The algorithm initialises the patch locations by sampling from a uniform random 
    $$
    pos_new gives use the new location to search over. R is uniform random in [-1, 1] x [-1, 1]. We search till wa^{i} is smaller than 1 pixel. Here a=1/2.
 
-   ![Random search](./images/search.png)
+   <img align="center" src="./images/search.png">
 
    
 
 ### Results of the project
 
-![Paper result](./images/result_paper.png)
+<img align="center" src="./images/result_paper.png">
 
 
 

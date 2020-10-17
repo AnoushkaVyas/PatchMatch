@@ -15,6 +15,8 @@
 ### Main Goal(s) of the project
 The main objective of this project is to present interactive image editing tools using a new randomized algorithm for quickly finding approximate nearest neighbor matches between image patches. This one simple algorithm forms the basis for a variety of tools – image retargeting, completion and reshuffling – that can be used together in the context of a high-level image editing application. One more feature is additional intuitive constraints on the synthesis process that offer the user a level of control unavailable in any other methods.
 
+### Problem definition
+
 #### Notations
 
 f(x, y) determines the location of the patch in image **B** that is closest to the patch at the location (x, y) in image **A**. D(A[x, y]. B[f(x,y)]) determines the distance (can be mean L1 cost)  between the patches of image **A** and image **B**. Here, A[x,y] and B[x,y] determine the patch with center at (x,y) in image A and image B.
@@ -23,17 +25,37 @@ f(x, y) determines the location of the patch in image **B** that is closest to t
 
 The algorithm initialises the patch locations by sampling from a uniform random distribution of locations and assigns the initial patch matching error. It then iteratively finds the closest matching patch in a 2 step process:
 
+![Initialization](./images/initialization.png)
+
 1. **Propagation:**
 
-   In this step, we find look at the use the locations of (f(x-1, y), f(x, y - 1)) (in even iter) and (f(x + 1, y), f(x, y + 1)) (in odd iter) for closest patch to (x,y). The idea here is that the patch for the neighbors of (x, y) should be close to the patch at (x,y). The final distance is the D = min(D(A[x, y]. B[f(x,y)]), D(A[x, y]. B[f(x - 1,y)]), D(A[x, y]. B[f(x,y - 1)])).  
+   In this step, we find look at the use the locations of (f(x-1, y), f(x, y - 1)) (in even iter) and (f(x + 1, y), f(x, y + 1)) (in odd iter) for closest patch to (x,y). The idea here is that the patch for the neighbors of (x, y) should be close to the patch at (x,y). 
+
+   The final distance D = min(D(A[x, y]. B[f(x,y)]), D(A[x, y]. B[f(x - 1,y)]), D(A[x, y]. B[f(x,y - 1)])).  
+
+   ![Propagation](./images/propagation.png)
 
 2. **Random search:**
 
-   Propagation step might converge to a non optimal minima in finding the nearest patch to resolve this the paper uses random search. 
+   Propagation step might converge to a non optimal minima in finding the nearest patch to resolve this the paper uses random search. We search in a larger patch in image B at certain offsets. 
 
-### Problem definition
+   If pos = f(x, y) (remember this provide position of the closest patch in image B to the (x, y) of image A). 
+   $$
+   pos_{new} = pos + w\alpha^{i}R_{i}
+   $$
+   pos_new gives use the new location to search over. R is uniform random in [-1, 1] x [-1, 1]. We search till wa^{i} is smaller than 1 pixel. Here a=1/2.
+
+   ![Random search](./images/search.png)
+
+   
 
 ### Results of the project
+
+![Paper result](./images/result_paper.png)
+
+
+
+
 
 ### Milestones and expected timeline
 

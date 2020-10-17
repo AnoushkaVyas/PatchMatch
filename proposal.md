@@ -13,6 +13,8 @@
 4. [Chaitanya Kharyal](https://github.com/kharyal)
 
 ### Main Goal(s) of the project
+The main objective of this project is to present interactive image editing tools using a new
+randomized algorithm for quickly finding approximate nearest neighbor matches between image patches. 
 
 ### Problem definition
 

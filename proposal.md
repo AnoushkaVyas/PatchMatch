@@ -13,7 +13,7 @@
 4. [Chaitanya Kharyal](https://github.com/kharyal) - 20171208
 
 ### Main Goal(s) of the project
-The main objective of this project is to present interactive image editing tools using a new randomized algorithm for quickly finding approximate nearest neighbor matches between image patches. This one simple algorithm forms the basis for a variety of tools – image retargeting, completion and reshuffling – that can be used together in the context of a high-level image editing application. One more feature is additional intuitive constraints on the synthesis process that offer the user a level of control unavailable in any other methods.
+The main objective of this project is to present interactive image editing tools using a new randomized algorithm for quickly finding approximate nearest neighbor matches between image patches. This algorithm forms the basis for a variety of tools – that can be used together in the context of a high-level image editing application. One more feature is additional intuitive constraints on the synthesis process that offer the user a level of control unavailable in any other methods. Previous methods in this field are generally very slow, and could not be ported into applications where user input was allowed. This method aims to allow for the use of tools in a real time scenario.
 
 ### Problem definition
 
@@ -53,11 +53,21 @@ The algorithm initialises the patch locations by sampling from a uniform random 
 
 <img align="center" src="./images/result_paper.png">
 
+From patches in the bottom image, the algorithm will aim to reconstruct the top image. The various iterations of the algorithm that have been descrived above are seen. After about 5 iterations all the patches stop changing, and we achieve convergence.
+
 
 
 
 
 ### Milestones and expected timeline
+
+1. 19th October - Mid evaluation 
+
+   Build patch match basic algorithm, which can do image formation.
+
+2. 1st November - 15th November
+
+   Build GUI application interface for the patch match algorithm for user input capabilities.  
 
 ### Dataset
 

@@ -55,6 +55,8 @@ The algorithm initialises the patch locations by sampling from a uniform random 
 
 From patches in the bottom image, the algorithm will aim to reconstruct the top image. The various iterations of the algorithm that have been descrived above are seen. After about 5 iterations all the patches stop changing, and we achieve convergence.
 
+A GUI will be built for the patch match algorithm as well to show a visualization.
+
 
 
 

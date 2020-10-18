@@ -60,3 +60,17 @@ The algorithm initialises the patch locations by sampling from a uniform random 
 ### Milestones and expected timeline
 
 ### Dataset
+
+   The patch match algorithm can be tested on a various datasets, depending on the degree of visual similarity. Roughly, these are the datasets that will be used for testing.
+
+1. [Middleburry Stereo Vision](https://vision.middlebury.edu/stereo/data/scenes2006/)
+   
+   Contains stereo pairs, along with corresponding groundtruth data. This dataset will provide samples for images that are similar in nature. A small subset of this will be used.
+   
+2. Video 
+   
+   Images in a video can be taken from a existing video, and provide for samples less similar than the Middleburry Stereo vision dataset. This can be done by extracting frames from a short video. 
+
+3. [Caltech-256](http://www.vision.caltech.edu/Image_Datasets/Caltech256/)
+
+   The dataset contains images of 256 categories, with images of each category in varying amounts. A subset of the images from the same category of this dataset can be used, and would provide samples for images that are not similar nature. 

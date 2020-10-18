@@ -7,10 +7,10 @@
 [project-strawhat](https://github.com/Digital-Image-Processing-IIITH/project-strawhat)
 
 ### Team Members
-1. [Rahul Sajnani](https://github.com/RahulSajnani)
-2. [Anoushka Vyas](https://github.com/AnoushkaVyas)
-3. [Ajay Shrihari](https://github.com/AjayShrihari)
-4. [Chaitanya Kharyal](https://github.com/kharyal)
+1. [Rahul Sajnani](https://github.com/RahulSajnani) - 20171056
+2. [Anoushka Vyas](https://github.com/AnoushkaVyas) - 20171057
+3. [Ajay Shrihari](https://github.com/AjayShrihari) - 20171097
+4. [Chaitanya Kharyal](https://github.com/kharyal) - 20171208
 
 ### Main Goal(s) of the project
 The main objective of this project is to present interactive image editing tools using a new randomized algorithm for quickly finding approximate nearest neighbor matches between image patches. This one simple algorithm forms the basis for a variety of tools – image retargeting, completion and reshuffling – that can be used together in the context of a high-level image editing application. One more feature is additional intuitive constraints on the synthesis process that offer the user a level of control unavailable in any other methods.

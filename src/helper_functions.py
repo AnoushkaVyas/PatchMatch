@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-
+from PIL import Image
 
 '''
 Authors:
@@ -13,6 +13,16 @@ Anoushka Vyas
 Chaitanya Kharyal
 '''
 
+def read_image(image_path):
+    '''
+    Function to read image
+    '''
+
+    image = np.asarray(Image.open(image_path))
+
+    return image
+
+    
 def plot_images(images_list, plot_dim, cmap="viridis", title = None, subplot_names = None):
     '''
     Function to plot images
@@ -36,7 +46,7 @@ def plot_images(images_list, plot_dim, cmap="viridis", title = None, subplot_nam
         index += 1
         
     plt.show()
-    
+
 
 if __name__== "__main__":
     

@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import os, argparse
 from helper_functions import *
 
+
 '''
 Authors:
 
@@ -20,15 +21,48 @@ class PatchMatch(object):
     PatchMatch class
     '''
 
-    def __init__(self):
+    def __init__(self, iterations = 5, patch_size = 3):
 
-        pass
+        self.iterations = iterations
+        self.patch_size = patch_size
 
-    def run(self, image, iterations = 5):
+
+    def calulate_distance(self, patch_1, patch_2):
+        '''
+        Function to calulate distance between two given patches
+
+        '''
+
+        dist = np.mean(np.abs(patch_1 - patch_2))
+        return dist
+    
+    def random_init(self, image, image_2):
+        '''
+        Randomly initialize patches
+        '''
+
+        rows = np.random.randint(image.shape[0] - self.patch_size, size = image.shape[:2])
+        columns = np.random.randint(image.shape[1] - self.patch_size, size = image.shape[:2])
+
+        h, w, c = image.shape
+        self.nearest_patch_location = np.stack([rows, columns], axis = 2)
+        self.nearest_patch_distance = np.ones(image.shape[:2])
+
+        for i in range(h - self.patch_size):
+            for j in range(w - self.patch_size):
+
+                patch_location = self.nearest_patch_location[i, j, :]
+                self.nearest_patch_distance[i, j] = self.calulate_distance(image[i: i + self.patch_size, j:j + self.patch_size, :], image_2[patch_location[0]: patch_location[0] + self.patch_size, patch_location[1]: patch_location[1] + self.patch_size, :])
+
+        # print(np.max(self.nearest_patch_distance), np.min(self.nearest_patch_distance))
+        
+    def run(self, image, image_2):
         '''
         Patch match run script
         '''
         
+        self.random_init(image, image_2)
+
         pass
 
     def propagation(self):
@@ -49,15 +83,16 @@ if __name__=="__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", help = "Input image path", required = True)
+    parser.add_argument("--input_2", help = "Input image path 2", required = True)
     args = parser.parse_args()
 
     ######################################################################
 
-    image = plt.imread(args.input)
-    
-    plot_images([image], (1,1))
+    image = read_image(args.input)
+    image_2 = read_image(args.input_2)
+    # plot_images([image], (1,1))
     pm = PatchMatch()
-    pm.run(image)
+    pm.run(image, image_2)
 
     # pm.run(image)
 

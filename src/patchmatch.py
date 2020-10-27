@@ -66,85 +66,52 @@ class PatchMatch(object):
 
         pass
 
-    def padding(self, im, filt_sz, pad_type = 'constant'):
-        '''
-        Padding function
-        '''
-        f_h,f_w = filt_sz
-        if (f_h-1)%2 != 0:
-            pad_r = ((f_h-1)//2+1,(f_h-1)//2)
-        else :
-            pad_r = ((f_h-1)//2,(f_h-1)//2)
-        if (f_w-1)%2 != 0:
-            pad_w = ((f_w-1)//2+1,(f_w-1)//2)
-        else :
-            pad_w = ((f_w-1)//2,(f_w-1)//2)
-        pad_sz = (pad_r,pad_w)
-        im1 = np.pad(im,pad_sz,mode = pad_type)
-        return im1
-
-    def col_for_conv(self, is_even = False):
-        '''
-        Helper for convolution_for_propogation
-        '''
-        k_h = 2; k_w = 2 
-        im = self.padding(deepcopy(self.nearest_patch_distance), (2,2))
-        if is_even:
-            im = np.rot90(im, 2)
-        im_h,im_w = im.shape
-        a = np.transpose(((np.arange(im_h - k_h+1)[:,None] + np.arange(im_w - k_w+1)*im_h).ravel(order='F')[:,None]+ np.arange(k_h))[:,:,None],(1,2,0))
-        a = np.reshape(a+im_h*np.arange(k_w)[None,:,None],(k_h*k_w,-1),order='F')
-        return im.ravel(order='F')[a]
-    
-    def convolution_for_propogation(self, is_even = False):
-        '''
-        Does propagation step faster
-        '''
-        kernel = np.array([[np.inf, 1],[1, 1]])
-        im_w, im_h = self.nearest_patch_distance.shape
-        k_h,k_w = kernel.shape
-        kernel_col = kernel.ravel()[:,None]
-        col_dist = self.col_for_conv(is_even)*kernel_col
-        patch_distance = np.reshape(np.min(col_dist, axis=0),  (im_h - k_h+1, im_w - k_w+1) ,order='F')
-        patch_index = np.reshape(np.argmin(col_dist, axis=0),  (im_h - k_h+1, im_w - k_w+1) ,order='F')
-        return patch_distance, patch_index
-        
-
-    def propagation(self, is_even = False):
+    def propagation(self, patch_index, is_even = False):
         '''
         Propagation step of patch match
         Arguments:
             is_even: True if it is an even iteration
                      False otherwise
         '''
-        patch_distance, patch_index = self.convolution_for_propogation(is_even)
         if is_even:
-            patch_distance = np.rot90(patch_distance,2)
-            patch_index = np.rot90(patch_distance,2)
-            self.nearest_patch_distance = patch_distance        
-            for i in range(patch_distance.shape[0]):
-                for j in range(patch_distance.shape[1]):
-                    if i+1 < patch_distance.shape[0] and j+1<patch_distance.shape[1]:
-                        if patch_index[i,j] == 1:
-                            self.nearest_patch_distance[i,j,:] = self.nearest_patch_distance[i+1,j,:]
-                        elif patch_index[i,j] == 2:
-                            self.nearest_patch_distance[i,j,:] = self.nearest_patch_distance[i,j+1,:]
-        
+            indices =   deepcopy([
+                        [patch_index[0]+1, patch_index[1]], 
+                        [patch_index[0], patch_index[1]+1]])
+
+            for index in range(len(indices)-1,-1,-1):
+                if indices[index][0]+1 >= self.image.shape[0]-self.patch_size or indices[index][1]+1 >= self.image.shape[1]-self.patch_size:
+                    indices.pop(index)
+            
         else:
-            self.nearest_patch_distance = patch_distance        
-            for i in range(patch_distance.shape[0]):
-                for j in range(patch_distance.shape[1]):
-                    if i-1>=0 and j-1>=0:
-                        if patch_index[i,j] == 1:
-                            self.nearest_patch_distance[i,j,:] = self.nearest_patch_distance[i-1,j,:]
-                        elif patch_index[i,j] == 2:
-                            self.nearest_patch_distance[i,j,:] = self.nearest_patch_distance[i,j-1,:]
+            indices =   deepcopy([
+                        [patch_index[0]-1, patch_index[1]], 
+                        [patch_index[0], patch_index[1]-1]])
+
+            for index in range(len(indices)-1,-1,-1):
+                if indices[index][0]-1 < 0 or indices[index][1]-1 < 0:
+                    indices.pop(index)
+
+        min_dist = self.nearest_patch_distance[patch_index[0], patch_index[1]]
+        min_loc = deepcopy(patch_index)
+            
+        for index in indices:
+            dist = self.calulate_distance(
+                self.image[patch_index[0]:patch_index[0]+self.patch_size, patch_index[1]:patch_index[1]+self.patch_size],
+                self.image2[index[0]:index[0]+self.patch_size, index[1]:index[1]+self.patch_size]
+            )
+            if dist<min_dist:
+                min_dist = dist
+                min_loc = deepcopy(index)
+            
+        self.nearest_patch_distance[patch_index[0], patch_index[1]] = min_dist
+        self.nearest_patch_location[patch_index[0],patch_index[1],:] = np.array(min_loc)    
+
 
     def random_search(self):
         '''
         Random search step of patch match
         '''
-        pass
+        Ri = 
 
 if __name__=="__main__":
 

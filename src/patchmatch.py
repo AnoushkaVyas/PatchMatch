@@ -107,11 +107,30 @@ class PatchMatch(object):
         self.nearest_patch_location[patch_index[0],patch_index[1],:] = np.array(min_loc)    
 
 
-    def random_search(self):
+    def random_search(self, patch_index, alpha = 0.5):
         '''
         Random search step of patch match
         '''
-        Ri = 
+        Ri = np.random.uniform(-1,1,(1,2))
+        random_search_magnitude = np.max(self.image.shape)*alpha
+        random_search_distance = np.ceil(random_search_magnitude*Ri)
+        current_nearest_patch_location = deepcopy(self.nearest_patch_location[patch_index])
+        current_nearest_patch_distance = deepcopy(self.nearest_patch_distance[patch_index])
+
+        while any(random_search_distance>1):
+            if (current_nearest_patch_location[0]+random_search_distance[0])>self.image.shape[0] - self.patch_size) or (current_nearest_patch_location[1]+random_search_distance[1])>self.image.shape[1] - self.patch_size) or (current_nearest_patch_location[0]+random_search_distance[0])<0) or (current_nearest_patch_location[1]+random_search_distance[1])<0):
+                random_search_magnitude = random_search_magnitude*alpha
+                Ri = np.random.uniform(-1,1,(1,2))
+                random_search_distance = np.ceil(random_search_magnitude*Ri)
+                continue
+
+            dist = self.calulate_distance(
+                self.image[patch_index[0]:patch_index[0]+self.patch_size, patch_index[1]:patch_index[1]+self.patch_size],
+                self.image2[current_nearest_patch_location[0]+random_search_distance[0]:current_nearest_patch_location[0]+random_search_distance[0]+self.patch_size, current_nearest_patch_location[1]+random_search_distance[1]:current_nearest_patch_location[1]+random_search_distance[1]+self.patch_size]
+            )
+            if dist< self.nearest_patch_distance:
+                self.nearest_patch_distance[patch_index] = dist
+                self.nearest_patch_location[patch_index] = current_nearest_patch_location+random_search_distance
 
 if __name__=="__main__":
 

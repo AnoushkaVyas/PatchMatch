@@ -58,46 +58,24 @@ class PatchMatch(object):
 
         # print(np.max(self.nearest_patch_distance), np.min(self.nearest_patch_distance))
         
-    def run(self, image, image_2, vary_size = True):
+    def run(self, image, image_2):
         '''
         Patch match run script
         '''
         
-        if vary_size:
-            sizes = [(int(image.shape[0]/4),int(image.shape[1]/4)), (int(image.shape[0]/2), int(image.shape[1]/2)), image.shape[:2]]
-        else:
-            sizes = [image.shape[:2]]
-        image_cpy = deepcopy(image)
-        image2_cpy = deepcopy(image_2)
-        init = True
-        for size in sizes:
-            print('Image shape:',size, end=" ")
-            if vary_size:
-                image = cv2.resize(image_cpy,(size[1], size[0]))
-            # image_2 = cv2.resize(image2_cpy,(size[1], size[0]))
+        self.random_init(image, image_2)
+        is_even = False
+        for iteration in tqdm(range(self.iterations)):
             
-            if init == True:
-                self.random_init(image, image_2)
-                init = False
-            
-            if vary_size:
-                dist = deepcopy(self.nearest_patch_distance)
-                loc = deepcopy(self.nearest_patch_location)
-                self.nearest_patch_distance = cv2.resize(dist,(size[1], size[0]))
-                self.nearest_patch_location = (cv2.resize(loc.astype('float32'),(size[1], size[0]))).astype(int)
+            if iteration%2 == 0:
+                is_even = True
+            else:
+                is_even = False
 
-            is_even = False
-            for iteration in tqdm(range(self.iterations)):
-
-                if iteration%2 == 0:
-                    is_even = True
-                else:
-                    is_even = False
-
-                for i in range(image.shape[0] - self.patch_size):
-                    for j in range (image.shape[1] - self.patch_size):
-                        self.propagation(image, image_2, [i,j], is_even)
-                        self.random_search(image, image_2, [i,j])
+            for i in range(image.shape[0] - self.patch_size):
+                for j in range (image.shape[1] - self.patch_size):
+                    self.propagation(image, image_2, [i,j], is_even)
+                    self.random_search(image, image_2, [i,j])
 
         return self.nearest_patch_distance, self.nearest_patch_location
 

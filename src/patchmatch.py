@@ -43,8 +43,8 @@ class PatchMatch(object):
         Randomly initialize patches
         '''
 
-        rows = np.random.randint(image.shape[0] - self.patch_size, size = image.shape[:2])
-        columns = np.random.randint(image.shape[1] - self.patch_size, size = image.shape[:2])
+        rows = np.random.randint(image_2.shape[0] - self.patch_size, size = image.shape[:2])
+        columns = np.random.randint(image_2.shape[1] - self.patch_size, size = image.shape[:2])
 
         h, w, c = image.shape
         self.nearest_patch_location = np.stack([rows, columns], axis = 2)
@@ -54,6 +54,7 @@ class PatchMatch(object):
             for j in range(w - self.patch_size):
 
                 patch_location = self.nearest_patch_location[i, j, :]
+                # print(patch_location)
                 self.nearest_patch_distance[i, j] = self.calulate_distance(image[i: i + self.patch_size, j:j + self.patch_size, :], image_2[patch_location[0]: patch_location[0] + self.patch_size, patch_location[1]: patch_location[1] + self.patch_size, :])
 
         # print(np.max(self.nearest_patch_distance), np.min(self.nearest_patch_distance))
@@ -133,7 +134,7 @@ class PatchMatch(object):
         current_nearest_patch_distance = deepcopy(self.nearest_patch_distance[patch_index[0], patch_index[1]])
 
         while random_search_distance[0]>1 or random_search_distance[1]>1:
-            if ((current_nearest_patch_location[0]+random_search_distance[0])>image.shape[0] - self.patch_size) or ((current_nearest_patch_location[1]+random_search_distance[1])>image.shape[1] - self.patch_size) or ((current_nearest_patch_location[0]+random_search_distance[0])<0) or ((current_nearest_patch_location[1]+random_search_distance[1])<0):
+            if ((current_nearest_patch_location[0]+random_search_distance[0])>image2.shape[0] - self.patch_size -1) or ((current_nearest_patch_location[1]+random_search_distance[1])>image2.shape[1] - self.patch_size -1) or ((current_nearest_patch_location[0]+random_search_distance[0])<0) or ((current_nearest_patch_location[1]+random_search_distance[1])<0):
                 random_search_magnitude = random_search_magnitude*alpha
                 Ri = np.random.uniform(-1,1,(1,2)); Ri = Ri[0]
                 random_search_distance = np.ceil(random_search_magnitude*Ri).astype(int)

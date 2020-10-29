@@ -63,10 +63,22 @@ class PatchMatch(object):
         '''
         
         self.random_init(image, image_2)
+        is_even = False
+        for iteration in range(self.iterations):
+            
+            if iteration%2 == 0:
+                is_even = True
+            else:
+                is_even = False
 
-        pass
+            for i in range(image.shape[0] - self.patch_size):
+                for j in range (image.shape[1] - self.patch_size):
+                    self.propagation(image, image_2, [i,j], is_even)
+                    self.random_search(image, image_2, [i,j])
 
-    def propagation(self, patch_index, is_even = False):
+        return self.nearest_patch_distance, self.nearest_patch_location
+
+    def propagation(self, image, image2, patch_index, is_even = False):
         '''
         Propagation step of patch match
         Arguments:
@@ -79,7 +91,7 @@ class PatchMatch(object):
                         [patch_index[0], patch_index[1]+1]])
 
             for index in range(len(indices)-1,-1,-1):
-                if indices[index][0]+1 >= self.image.shape[0]-self.patch_size or indices[index][1]+1 >= self.image.shape[1]-self.patch_size:
+                if indices[index][0]+1 >= image.shape[0]-self.patch_size or indices[index][1]+1 >= image.shape[1]-self.patch_size:
                     indices.pop(index)
             
         else:
@@ -96,8 +108,8 @@ class PatchMatch(object):
             
         for index in indices:
             dist = self.calulate_distance(
-                self.image[patch_index[0]:patch_index[0]+self.patch_size, patch_index[1]:patch_index[1]+self.patch_size],
-                self.image2[index[0]:index[0]+self.patch_size, index[1]:index[1]+self.patch_size]
+                image[patch_index[0]:patch_index[0]+self.patch_size, patch_index[1]:patch_index[1]+self.patch_size],
+                image2[index[0]:index[0]+self.patch_size, index[1]:index[1]+self.patch_size]
             )
             if dist<min_dist:
                 min_dist = dist
@@ -107,26 +119,26 @@ class PatchMatch(object):
         self.nearest_patch_location[patch_index[0],patch_index[1],:] = np.array(min_loc)    
 
 
-    def random_search(self, patch_index, alpha = 0.5):
+    def random_search(self, image, image2, patch_index, alpha = 0.5):
         '''
         Random search step of patch match
         '''
         Ri = np.random.uniform(-1,1,(1,2))
-        random_search_magnitude = np.max(self.image.shape)*alpha
+        random_search_magnitude = np.max(image.shape)*alpha
         random_search_distance = np.ceil(random_search_magnitude*Ri)
         current_nearest_patch_location = deepcopy(self.nearest_patch_location[patch_index])
         current_nearest_patch_distance = deepcopy(self.nearest_patch_distance[patch_index])
 
         while any(random_search_distance>1):
-            if (current_nearest_patch_location[0]+random_search_distance[0])>self.image.shape[0] - self.patch_size) or (current_nearest_patch_location[1]+random_search_distance[1])>self.image.shape[1] - self.patch_size) or (current_nearest_patch_location[0]+random_search_distance[0])<0) or (current_nearest_patch_location[1]+random_search_distance[1])<0):
+            if (current_nearest_patch_location[0]+random_search_distance[0])>image.shape[0] - self.patch_size) or (current_nearest_patch_location[1]+random_search_distance[1])>image.shape[1] - self.patch_size) or (current_nearest_patch_location[0]+random_search_distance[0])<0) or (current_nearest_patch_location[1]+random_search_distance[1])<0):
                 random_search_magnitude = random_search_magnitude*alpha
                 Ri = np.random.uniform(-1,1,(1,2))
                 random_search_distance = np.ceil(random_search_magnitude*Ri)
                 continue
 
             dist = self.calulate_distance(
-                self.image[patch_index[0]:patch_index[0]+self.patch_size, patch_index[1]:patch_index[1]+self.patch_size],
-                self.image2[current_nearest_patch_location[0]+random_search_distance[0]:current_nearest_patch_location[0]+random_search_distance[0]+self.patch_size, current_nearest_patch_location[1]+random_search_distance[1]:current_nearest_patch_location[1]+random_search_distance[1]+self.patch_size]
+                image[patch_index[0]:patch_index[0]+self.patch_size, patch_index[1]:patch_index[1]+self.patch_size],
+                image2[current_nearest_patch_location[0]+random_search_distance[0]:current_nearest_patch_location[0]+random_search_distance[0]+self.patch_size, current_nearest_patch_location[1]+random_search_distance[1]:current_nearest_patch_location[1]+random_search_distance[1]+self.patch_size]
             )
             if dist< self.nearest_patch_distance:
                 self.nearest_patch_distance[patch_index] = dist

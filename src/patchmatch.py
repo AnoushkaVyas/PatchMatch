@@ -59,11 +59,65 @@ class PatchMatch(object):
 
         # print(np.max(self.nearest_patch_distance), np.min(self.nearest_patch_distance))
         
-    def run(self, image, image_2):
+    def run_with_resizing(self, image, image2):
+
+        sizes1 = [[int(image.shape[0]/4), int(image.shape[1]/4)], [int(image.shape[0]/2), int(image.shape[1]/2)], [image.shape[0], image.shape[1]]]
+        sizes2 = [[int(image2.shape[0]/4), int(image2.shape[1]/4)], [int(image2.shape[0]/2), int(image2.shape[1]/2)], [image2.shape[0], image2.shape[1]]]
+        image_cpy = deepcopy(image)
+        image2_cpy = deepcopy(image2)
+
+        init_required = True
+        k = 0
+        for size1, size2 in zip(sizes1, sizes2):
+            image = cv2.resize(image_cpy, (size1[1],size1[0]))
+            image_2 = cv2.resize(image2_cpy, (size2[1],size2[0]))
+            
+            if init_required:
+                # print(image.shape, image_2.shape)
+                self.random_init(image, image_2)
+                init_required = False
+
+            else:
+                self.nearest_patch_distance = cv2.resize(self.nearest_patch_distance.astype('float32'), (size1[1],size1[0]))
+                self.nearest_patch_location = cv2.resize(self.nearest_patch_location.astype('float32'), (size1[1],size1[0]))
+
+                self.nearest_patch_location[:,:,0] = ((self.nearest_patch_location[:,:,0]/sizes1[k-1][0])*(size1[0]-self.patch_size)).astype(int)
+                self.nearest_patch_location[:,:,1] = ((self.nearest_patch_location[:,:,1]/sizes1[k-1][1])*(size1[1]-self.patch_size)).astype(int)
+                self.nearest_patch_location = (self.nearest_patch_location).astype(int)
+                
+                for i in range(image.shape[0] - self.patch_size):
+                    for j in range(image.shape[1] - self.patch_size):
+                        patch_location = self.nearest_patch_location[i, j, :]
+                        self.nearest_patch_distance[i, j] = self.calulate_distance(image[i: i + self.patch_size, j:j + self.patch_size, :], image_2[patch_location[0]: patch_location[0] + self.patch_size, patch_location[1]: patch_location[1] + self.patch_size, :])
+
+
+
+            is_even = False
+            for iteration in tqdm(range(self.iterations)):
+
+                if iteration%2 == 0:
+                    is_even = True
+                else:
+                    is_even = False
+                # print(size1)
+                for i in range(image.shape[0] - self.patch_size):
+                    for j in range (image.shape[1] - self.patch_size):
+                        # print(i,j)
+                        self.propagation(image, image_2, [i,j], is_even)
+                        self.random_search(image, image_2, [i,j])
+            k = k+1
+
+        return self.nearest_patch_distance, self.nearest_patch_location
+
+    def run(self, image, image_2, with_resize = False):
         '''
         Patch match run script
         '''
         
+        if with_resize:
+            dist, loc = self.run_with_resizing(image, image_2)
+            return dist, loc
+
         self.random_init(image, image_2)
         is_even = False
         for iteration in tqdm(range(self.iterations)):
@@ -109,7 +163,7 @@ class PatchMatch(object):
         min_loc = deepcopy(self.nearest_patch_location[patch_index[0],patch_index[1]])
             
         for index in indices:
-            # print(self.nearest_patch_location[index[0], index[1]][0])
+            # print(self.nearest_patch_location[index[0], index[1]])
             dist = self.calulate_distance(
                 image[patch_index[0]:patch_index[0]+self.patch_size, patch_index[1]:patch_index[1]+self.patch_size],
                 image2[self.nearest_patch_location[index[0], index[1]][0]:self.nearest_patch_location[index[0], index[1]][0]+self.patch_size, self.nearest_patch_location[index[0], index[1]][1]:self.nearest_patch_location[index[0], index[1]][1]+self.patch_size]

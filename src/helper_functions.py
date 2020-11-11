@@ -47,6 +47,19 @@ def plot_images(images_list, plot_dim, cmap="viridis", title = None, subplot_nam
         
     plt.show()
 
+def reconstruct_image(locations, image, image_2):
+
+    loc = locations
+    b_cpy = image_2.copy()
+
+    reconstructed_image = np.zeros(image.shape)
+    
+    for i in range(loc.shape[0]):
+        for j in range(loc.shape[1]):
+            reconstructed_image[i,j,:] = b_cpy[loc[i,j,0],loc[i,j,1],:]
+        reconstructed_image = reconstructed_image.astype(int)
+
+    return reconstructed_image
 
 if __name__== "__main__":
     

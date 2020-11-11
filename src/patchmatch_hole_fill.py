@@ -42,7 +42,7 @@ class PatchMatch(object):
         if np.sum(mask) * 10 > self.patch_size * self.patch_size:
            return 10000
 
-        dist = np.mean(np.abs(patch_1 - patch_2))
+        dist = np.sqrt(np.sum(np.square(patch_1 - patch_2)))
         return dist
     
     def index_in_mask(self, index, mask_bbox):
@@ -78,7 +78,8 @@ class PatchMatch(object):
 
         rows[mask_new== 1] = rand_x[mask_new== 1]
         random_assign = np.random.randint(2, size = image.shape[:2])
-        rand_y = (np.random.randint(mask_bbox["w_min"] - self.patch_size, size = image.shape[:2]) * (random_assign < 0.5) + (random_assign >= 0.5) * (mask_bbox["w_max"] + np.random.randint(image.shape[0] - mask_bbox["w_max"] - self.patch_size, size = image.shape[:2])))
+
+        rand_y = (np.random.randint(mask_bbox["w_min"] - self.patch_size, size = image.shape[:2]) * (random_assign < 0.5) + (random_assign >= 0.5) * (mask_bbox["w_max"] + np.random.randint(image.shape[1] - mask_bbox["w_max"] - self.patch_size, size = image.shape[:2])))
 
         columns[mask_new== 1] = rand_y[mask_new== 1]        
         rows[rows < 0] = 0
@@ -98,7 +99,12 @@ class PatchMatch(object):
 
                 
                 patch_location = self.nearest_patch_location[i, j, :]
-                self.nearest_patch_distance[i, j] = self.calculate_distance(image[i: i + self.patch_size, j:j + self.patch_size, :], image[patch_location[0]: patch_location[0] + self.patch_size, patch_location[1]: patch_location[1] + self.patch_size, :], self.mask[patch_location[0]: patch_location[0] + self.patch_size, patch_location[1]: patch_location[1] + self.patch_size])
+                self.nearest_patch_distance[i, j] = self.calculate_distance(
+                image[i: i + self.patch_size, j:j + self.patch_size, :],
+                
+                image[patch_location[0]: patch_location[0] + self.patch_size, patch_location[1]: patch_location[1] + self.patch_size, :], 
+                
+                self.mask[patch_location[0]: patch_location[0] + self.patch_size, patch_location[1]: patch_location[1] + self.patch_size])
 
                 # if self.nearest_patch_distance[i, j] > 0  and (self.index_in_mask(self.nearest_patch_location[i, j], mask_bbox)):
                 #     print(i, j, self.nearest_patch_distance[i, j])
@@ -175,11 +181,15 @@ class PatchMatch(object):
         '''
         Patch match run script
         '''
-        
+
         np.random.seed(1024)
-        # if with_resize:
-        #     dist, loc = self.run_with_resizing(image, image_2)
-        #     return dist, loc
+        masked_image = np.random.uniform(0, 255, size = image.shape)
+        masked_image[mask == 0] = image[mask == 0].copy()
+        
+        masked_image = rgb2lab(masked_image.copy())
+        image = rgb2lab(image.copy())
+
+
 
         self.mask = mask
         self.mask_bbox = self.get_bbox(mask)
@@ -188,8 +198,6 @@ class PatchMatch(object):
         is_even = False
         # masked_image = image.copy()
         # masked_image[mask == 1] = 0
-        masked_image = np.random.randint(255, size = image.shape)
-        masked_image[mask == 0] = image[mask == 0].copy()
         # plot_images([masked_image], (1,1))
         for iteration in tqdm(range(self.iterations)):
             
@@ -297,7 +305,7 @@ class PatchMatch(object):
                 loc = self.nearest_patch_location[i, j]    
                 d = self.nearest_patch_distance[i, j]
                 sim = np.exp(-d / (2*self.sigma**2))
-                out = cv2.addWeighted(out_image[i:i+self.patch_size, j:j+self.patch_size], 1, image[loc[0]:loc[0]+self.patch_size, loc[1]:loc[1] + self.patch_size].copy(), sim, 0)
+                out = out_image[i:i+self.patch_size, j:j+self.patch_size] + image[loc[0]:loc[0]+self.patch_size, loc[1]:loc[1] + self.patch_size].copy() * sim
 
                 out_image[i:i+self.patch_size, j:j+self.patch_size] = out
                 out_image_count[i:i+self.patch_size, j:j+self.patch_size] += sim
@@ -305,6 +313,7 @@ class PatchMatch(object):
         for i in range(self.mask_bbox["h_min"], self.mask_bbox["h_max"] ):
             for j in range (self.mask_bbox["w_min"], self.mask_bbox["w_max"] ):
                 if out_image_count[i, j, 0] > 0:
+
                     out_image[i, j, 0] = (out_image[i, j, 0] / out_image_count[i, j, 0])
                     out_image[i, j, 1] = (out_image[i, j, 1] / out_image_count[i, j, 1])
                     out_image[i, j, 2] = (out_image[i, j, 2] / out_image_count[i, j, 2])
@@ -328,7 +337,7 @@ if __name__=="__main__":
     ######################################################################
 
     image = read_image(args.input)
-    image_new = rgb2lab(image.copy())
+    
     image_2 = read_image(args.input_2)
     
     if image_2.max() != 0:
@@ -337,8 +346,8 @@ if __name__=="__main__":
 
     image_2 = binary_dilation(image_2, rectangle(5, 5))
 
-    pm = PatchMatch(10, 3)
-    image_out = pm.run_hole_filling(image_new, image_2)
+    pm = PatchMatch(50, 3)
+    image_out = pm.run_hole_filling(image, image_2)
     # dist, loc = pm.run_hole_filling(image_new, image_2)
 
     # image_out = reconstruct_image(loc, image, image)

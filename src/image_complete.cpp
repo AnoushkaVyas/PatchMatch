@@ -146,3 +146,215 @@ bool inBox(int x, int y, Box box) {
   }
   return false;
 }
+
+
+/* Measure distance between 2 patches with upper left corners (ax, ay) and (bx, by), terminating early if we exceed a cutoff distance.*/
+
+int dist(Mat a, Mat b, int ax, int ay, int bx, int by, int cutoff=INT_MAX) {
+  int ans = 0;
+  if (a.type() != CV_8UC3) {
+    cout << "Bad things happened in dist " <<endl;
+    exit(1);
+  }
+  for (int dy = 0; dy < patch_w; dy++) {
+    for (int dx = 0; dx < patch_w; dx++) {
+      Vec3b ac = a.at<Vec3b>(ay + dy, ax + dx);
+      Vec3b bc = b.at<Vec3b>(by + dy, bx + dx);
+
+      int db = ac[0] - bc[0];
+      int dg = ac[1] - bc[1];
+      int dr = ac[2] - bc[2];
+      ans += dr*dr + dg*dg + db*db;
+    }
+    if (ans >= cutoff) { return cutoff; }
+  }
+  if (ans < 0) return INT_MAX;
+  return ans;
+}
+
+/*
+PROPAGATION STEP HOLE FILLING
+*/
+void improve_guess(Mat a, Mat b, int ax, int ay, int &xbest, int &ybest, int &dbest, int bx, int by, int type) {
+  int d = dist(a, b, ax, ay, bx, by, dbest);
+  if ((d < dbest) && (ax != bx || ay != by) ) {
+#ifdef DEBUG
+      if (type == 0)
+        printf("  Prop x: improve (%d, %d) old nn (%d, %d) new nn (%d, %d) old dist %d, new dist %d\n", ax, ay, xbest, ybest, bx, by, dbest, d);
+      else if (type == 1)
+        printf("  Prop y: improve (%d, %d) old nn (%d, %d) new nn (%d, %d) old dist %d, new dist %d\n", ax, ay, xbest, ybest, bx, by, dbest, d);
+      else
+        printf("  Random: improve (%d, %d) old nn (%d, %d) new nn (%d, %d) old dist %d, new dist %d\n", ax, ay, xbest, ybest, bx, by, dbest, d);
+#endif
+    dbest = d;
+    xbest = bx;
+    ybest = by;
+  }
+}
+
+/* patchmatch with hole */
+void patchmatch(Mat a, Mat b, BITMAP *&ann, BITMAP *&annd, Mat dilated_mask, Mat constraint, CMap* cmap) {
+  /* Initialize with random nearest neighbor field (NNF). */
+  ann = new BITMAP(a.cols, a.rows);
+  annd = new BITMAP(a.cols, a.rows);
+  int aew = a.cols - patch_w + 1, aeh = a.rows - patch_w + 1;
+  int bew = b.cols - patch_w + 1, beh = b.rows - patch_w + 1;
+  memset(ann->data, 0, sizeof(int) * a.cols * a.rows);
+  memset(annd->data, 0, sizeof(int) * a.cols * a.rows);
+
+  int bx, by;
+  unordered_map<int, vector<pair<int, int> > >::iterator got;
+  for (int ay = 0; ay < aeh; ay++) {
+    for (int ax = 0; ax < aew; ax++) {
+      bool valid = false;
+      int const_pixel = (int) constraint.at<uchar>(ay, ax);
+
+      // if not having constraint
+      if (const_pixel == 0) {
+        while (!valid) {
+          bx = rand() % bew;
+          by = rand() % beh;
+          int mask_pixel = (int) dilated_mask.at<uchar>(by, bx);
+          // should find patches outside the hole
+          if (mask_pixel == 255) {
+            valid = false;
+          } else {
+            valid = true;
+          }
+        }
+      } else {
+        got = cmap->constraint_map.find(const_pixel);
+        if (got == cmap->constraint_map.end()) {
+          cout << "Something wrong in constraint map " << endl;
+          exit(1);
+        }
+        while (!valid) {
+          int rand_index = rand() % got->second.size();
+          bx = got->second[rand_index].first;
+          by = got->second[rand_index].second;
+          int mask_pixel = (int) dilated_mask.at<uchar>(by, bx);
+          if (bx >= bew || by >= beh) {
+              valid = false;
+          } else if (mask_pixel == 255) {
+            valid = false;
+          } else {
+            valid = true;
+          }
+        }
+      }
+      (*ann)[ay][ax] = XY_TO_INT(bx, by);
+      (*annd)[ay][ax] = dist(a, b, ax, ay, bx, by);
+    }
+  }
+
+#ifdef DEBUG
+  for (int ay = 0; ay < aeh; ay++ ) {
+    for (int ax = 0; ax < aew; ax++) {
+      int vp = (*ann)[ay][ax];
+      int xp = INT_TO_X(vp);
+      int yp = INT_TO_Y(vp);
+      int mask_pixel = (int) dilated_mask.at<uchar>(yp, xp);
+      if (mask_pixel == 255) {
+         cout << "Something wrong after init  " << xp << " ,  " << yp << " pixel " << mask_pixel << endl;
+      }
+    }
+  }
+#endif
+
+  for (int iter = 0; iter < pm_iters; iter++) {
+    int ystart = 0, yend = aeh, ychange = 1;
+    int xstart = 0, xend = aew, xchange = 1;
+    if (iter % 2 == 1) {
+      xstart = xend-1; xend = -1; xchange = -1;
+      ystart = yend-1; yend = -1; ychange = -1;
+    }
+    for (int ay = ystart; ay != yend; ay += ychange) {
+      for (int ax = xstart; ax != xend; ax += xchange) {
+
+        int const_pixel = (int) constraint.at<uchar>(ay, ax);
+
+        /* Current (best) guess. */
+        int v = (*ann)[ay][ax];
+        int xbest = INT_TO_X(v), ybest = INT_TO_Y(v);
+        int dbest = (*annd)[ay][ax];
+
+        /* PROPAGATION STEP */
+        if ((unsigned) (ax - xchange) < (unsigned) aew) {
+          int vp = (*ann)[ay][ax-xchange];
+          int xp = INT_TO_X(vp) + xchange, yp = INT_TO_Y(vp);
+
+          if (((unsigned) xp < (unsigned) aew)) {
+            int mask_pixel = (int) dilated_mask.at<uchar>(yp, xp);
+            if (mask_pixel != 255) {
+              int new_const_pixel = (int) constraint.at<uchar>(yp, xp);
+              if (const_pixel == 0) {
+                improve_guess(a, b, ax, ay, xbest, ybest, dbest, xp, yp, 0);
+              } else if (const_pixel == new_const_pixel) {
+                improve_guess(a, b, ax, ay, xbest, ybest, dbest, xp, yp, 0);
+              }
+            }
+          }
+        }
+
+        if ((unsigned) (ay - ychange) < (unsigned) aeh) {
+          int vp = (*ann)[ay-ychange][ax];
+          int xp = INT_TO_X(vp), yp = INT_TO_Y(vp) + ychange;
+
+          if (((unsigned) yp < (unsigned) aeh)) {
+            int mask_pixel = (int) dilated_mask.at<uchar>(yp, xp);
+            if (mask_pixel != 255) {
+              int new_const_pixel = (int) constraint.at<uchar>(yp, xp);
+              if (const_pixel == 0) {
+                improve_guess(a, b, ax, ay, xbest, ybest, dbest, xp, yp, 1);
+              } else if (const_pixel == new_const_pixel) {
+                improve_guess(a, b, ax, ay, xbest, ybest, dbest, xp, yp, 1);
+              }
+            }
+          }
+        }
+
+        /* RANDOM SEARCH */
+        if (const_pixel == 0) {
+          int rs_start = rs_max;
+          if (rs_start > MAX(b.cols, b.rows)) { rs_start = MAX(b.cols, b.rows); }
+          for (int mag = rs_start; mag >= 1; mag /= 2) {
+            /* Sampling window */
+            int xmin = MAX(xbest-mag, 0), xmax = MIN(xbest+mag+1, bew);
+            int ymin = MAX(ybest-mag, 0), ymax = MIN(ybest+mag+1, beh);
+            bool do_improve = false;
+            do {
+              int xp = xmin + rand() % (xmax-xmin);
+              int yp = ymin + rand() % (ymax-ymin);
+              int mask_pixel = (int) dilated_mask.at<uchar>(yp, xp);
+              if (mask_pixel != 255) {
+                improve_guess(a, b, ax, ay, xbest, ybest, dbest, xp, yp, 2);
+                do_improve = true;
+              }
+            } while (!do_improve);
+          }
+        } else {
+          got = cmap->constraint_map.find(const_pixel);
+          int improve_times = (int) ceil(sqrt(got->second.size()));
+          for (int i_t = 0; i_t < improve_times; ++i_t) {
+            bool do_improve = false;
+            do {
+              int rand_index = rand() % got->second.size();
+              int xp = got->second[rand_index].first;
+              int yp = got->second[rand_index].second;
+              int mask_pixel = (int) dilated_mask.at<uchar>(yp, xp);
+              if (xp >= bew || yp >= beh) {
+                do_improve = false;
+              } else if (mask_pixel != 255) {
+                improve_guess(a, b, ax, ay, xbest, ybest, dbest, xp, yp, 2);
+                do_improve = true;
+              }
+            } while (!do_improve);
+          }
+        }
+
+        (*ann)[ay][ax] = XY_TO_INT(xbest, ybest);
+        (*annd)[ay][ax] = dbest;
+      }
+    }
+  }
+}

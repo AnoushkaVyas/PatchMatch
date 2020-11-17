@@ -359,7 +359,15 @@ void patchmatch(Mat a, Mat b, BITMAP *&ann, BITMAP *&annd, Mat dilated_mask, Mat
   }
 }
 
-// Image inpainting algorithm
+
+/**
+ * Image inpainting algorithm
+ * @param im_orig: original image (with pixels in hole presented or not)
+ * @param mask:    mask specify missing region
+ * @param constraint: constraint image generate by user
+ *
+ * @return the completed/inpainting image
+ */
 void image_complete(Mat im_orig, Mat mask, Mat constraint) {
 
   // some parameters for scaling
@@ -421,7 +429,7 @@ void image_complete(Mat im_orig, Mat mask, Mat constraint) {
   double p1 = ((double)getTickCount() - t1) / getTickFrequency();
   cout << "time for init = " << p1 << endl;
 
-  // DEBUG
+  // just for DEBUG
   int index = 0;
 
   // go through all scale
@@ -434,15 +442,169 @@ void image_complete(Mat im_orig, Mat mask, Mat constraint) {
 
     Box mask_box = getBox(resize_mask);
     // dilate the mask
+
     Mat element = Mat::zeros(2*patch_w - 1, 2*patch_w - 1, CV_8UC1);
     element(Rect(patch_w - 1, patch_w - 1, patch_w, patch_w)) = 255;
     Mat dilated_mask;
     dilate(resize_mask, dilated_mask, element);
 
-
     CMap cmap;
     CMap* cmap_ptr = &cmap;
     getCMap(resize_constraint, cmap_ptr);
 
-    
+    // iterations of image completion
+    int im_iterations = 60;
+    for (int im_iter = 0; im_iter < im_iterations; ++im_iter) {
+      printf("im_iter = %d\n", im_iter);
+
+      BITMAP *ann = NULL, *annd = NULL;
+
+      double t2 = (double)getTickCount();
+
+      Mat B = resize_img.clone();
+      bitwise_and(resize_img, 0, B, resize_mask);
+
+      // use patchmatch to find NN
+      patchmatch(resize_img, B, ann, annd, dilated_mask, resize_constraint, cmap_ptr);
+
+      double p2 = ((double)getTickCount() - t2) / getTickFrequency();
+      cout << "time for PM = " << p2 << endl;
+
+      double t3 =  (double)getTickCount();
+      // create new image by letting each patch vote
+      Mat R = Mat::zeros(resize_img.rows, resize_img.cols, CV_32FC3);
+      Mat Rcount = Mat::zeros(resize_img.rows, resize_img.cols, CV_32FC3);
+      for (int y = mask_box.ymin; y < mask_box.ymax; ++y) {
+        for (int x = mask_box.xmin; x < mask_box.xmax; ++x) {
+            int v = (*ann)[y][x];
+            int xbest  = INT_TO_X(v), ybest = INT_TO_Y(v);
+            Rect srcRect(Point(x, y), Size(patch_w, patch_w));
+            Rect dstRect(Point(xbest, ybest), Size(patch_w, patch_w));
+            float d = (float) (*annd)[y][x];
+            float sim = exp(-d / (2*pow(sigma, 2) ));
+            Mat toAssign;
+            addWeighted(R(srcRect), 1.0, resize_img(dstRect), sim, 0, toAssign, CV_32FC3);
+            toAssign.copyTo(R(srcRect));
+            add(Rcount(srcRect), sim, toAssign, noArray(), CV_32FC3);
+            toAssign.copyTo(Rcount(srcRect));
+
+        }
+      }
+      double p3 = ((double)getTickCount() - t3) / getTickFrequency();
+      cout << "time for voting = " << p3 << endl;
+
+      // normalize new image
+      // COULD BE optimize TODO
+      for (int h = 0; h < R.rows; h++) {
+        for (int w = 0; w < R.cols; w++) {
+          Vec3f rcount_pixel = Rcount.at<Vec3f>(h, w);
+          if (rcount_pixel[0] > 0) {
+            Vec3f& r_pixel = R.at<Vec3f>(h, w);
+            r_pixel[0] = (r_pixel[0] / rcount_pixel[0]);
+            r_pixel[1] = (r_pixel[1] / rcount_pixel[1]);
+            r_pixel[2] = (r_pixel[2] / rcount_pixel[2]);
+          }
+        }
+      }
+
+      R.convertTo(R, CV_8UC3);
+
+      // keep pixel outside mask
+      Mat old_img = resize_img.clone();
+      R.copyTo(resize_img, resize_mask);
+
+      // measure how much image has changed, if not much then stop  TODO
+      if (im_iter > 0) {
+        double diff = 0;
+        int mask_count_white = 0;
+        int mask_count_black = 0;
+        int mask_count_other = 0;
+        for (int h = 0; h < resize_img.rows; h++) {
+          for (int w = 0; w < resize_img.cols; w++) {
+            int mask_pixel = (int) resize_mask.at<uchar>(h, w);
+            // white pixel in mask is hole
+            if (mask_pixel == 255) {
+              Vec3b new_pixel = resize_img.at<Vec3b>(h, w);
+              Vec3b old_pixel = old_img.at<Vec3b>(h, w);
+              diff += pow(new_pixel[0] - old_pixel[0], 2);
+              diff += pow(new_pixel[1] - old_pixel[1], 2);
+              diff += pow(new_pixel[2] - old_pixel[2], 2);
+              mask_count_white += 1;
+            } else if (mask_pixel == 0) {
+              mask_count_black += 1;
+            } else {
+              mask_count_other += 1;
+            }
+          }
+        }
+        assert(mask_count_other == 0);
+#ifdef DEBUG
+        cout << "diff is " << diff << endl;
+        cout << "mask count is " << mask_count_white << endl;
+        cout << "norm diff is " << diff/mask_count_white << endl;
+#endif
+        if (diff/mask_count_white < 0.02) {
+          break;
+        }
+      }
+
+      delete ann;
+      delete annd;
+    }
+
+
+    // Upsample A for the next scale
+    if (logscale < 0) {
+      double t4 = (double)getTickCount();
+      cout << "Upscaling" << endl;
+      // orig down scale to new scale
+      Mat upscale_img;
+      resize(im_orig, upscale_img, Size(), 2*scale, 2*scale, INTER_AREA);
+
+      // data upscale to new scale
+      int new_cols = upscale_img.cols, new_rows = upscale_img.rows;
+      resize(resize_img, resize_img, Size(new_cols, new_rows), 0, 0, INTER_CUBIC);
+      resize(mask, resize_mask, Size(new_cols, new_rows), 0, 0, INTER_AREA);
+      resize(constraint, resize_constraint, Size(new_cols, new_rows), 0, 0, INTER_NEAREST);
+
+      threshold(resize_mask, resize_mask, 127, 255, 0);
+
+      Mat inverted_mask;
+      bitwise_not(resize_mask, inverted_mask);
+      upscale_img.copyTo(resize_img, inverted_mask);
+
+      double p4 = ((double)getTickCount() - t4) / getTickFrequency();
+      cout << "time for resize = " << p4 << endl;
+    }
   }
+
+  imwrite("final_out.png", resize_img);
+}
+
+int main(int argc, char *argv[]) {
+  argc--;
+  argv++;
+  if (argc != 3 && argc != 4) { fprintf(stderr, "im_complete a mask result\n"
+                                   "Given input image a and mask outputs result\n"
+                                   "These are stored as RGB 24-bit images, with a 24-bit int at every pixel."); exit(1); }
+
+  Mat image = imread(argv[0]);
+
+  Mat a_matrix = image.clone();
+  Mat mask_cv = imread(argv[1], IMREAD_GRAYSCALE);
+  Mat const_cv = imread(argv[2], IMREAD_GRAYSCALE);
+
+  printf("mask_cv type %d\n", mask_cv.type());
+  for (int y = 0; y < mask_cv.rows; ++y) {
+    for (int x = 0; x < mask_cv.cols; ++x) {
+      int mask_pixel =(int) mask_cv.at<uchar>(y, x);
+      if (mask_pixel != 0) {
+        a_matrix.at<Vec3b>(y, x) = Vec3b(0, 0, 0);
+      }
+    }
+  }
+
+  image_complete(image, mask_cv, const_cv);
+
+  return 0;
+}

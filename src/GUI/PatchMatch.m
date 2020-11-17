@@ -224,18 +224,18 @@ global draw;
 msk(:,:,1) = uint8(msk(:,:,1)*255);
 mskimage = double(img).*double(repmat(~msk(:,:,1),1,1,3));
 const = msk(:,:,2)*1+msk(:,:,3)*2+msk(:,:,4)*3;  
-imwrite( uint8(mskimage), [name '_img.png'] );
+imwrite( uint8(mskimage), [name '_hole.png'] );
 imwrite( uint8(msk(:,:,1)), [name '_msk.png'] );
 imwrite( uint8(const), [name '_const.png'] );
 
-cmd = strcat({'./ImageComplete'}, {' '},{name},{'_img.png'},{' '},{name},{'_msk.png'},{' '},{name}, {'_const.png'});
+cmd = strcat({'./ImageComplete'}, {' '},{name},{'_hole.png'},{' '},{name},{'_msk.png'},{' '},{name}, {'_const.png'});
 %[status , cmdout] = system(cmd{1});
 tic;
 system(cmd{1});
 toc;
 
 %axes(handles.uipanel1);
-comp_img = imread('final_out.png');
+comp_img = imread('../results/own1_filled.png');
 
 global maskimage;
 global wbmFlg;

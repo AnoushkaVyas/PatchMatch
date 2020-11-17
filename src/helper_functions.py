@@ -44,6 +44,7 @@ def plot_images(images_list, plot_dim, cmap="viridis", title = None, subplot_nam
         if subplot_names is not None:
             plt.gca().set_title(subplot_names[index - 1])
         plt.imshow(image, cmap = cmap)
+        plt.axis("off")
         index += 1
         
     plt.show()
@@ -67,7 +68,6 @@ def get_frames_vid(inp_path, out_path, name_prefix = "frame_",num_images = 80):
     ret, frame = cap.read()
     num_images_count = 0
     img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    # cv2.imwrite(os.path.join(out_path, name_prefix + str(num_images_count)), img)
     plt.imsave(os.path.join(out_path, name_prefix + str(num_images_count) + ".png"), img)
     while(1):
         num_images_count = num_images_count + 1
@@ -77,7 +77,6 @@ def get_frames_vid(inp_path, out_path, name_prefix = "frame_",num_images = 80):
         if ret is False:
             break
         img_next = cv2.cvtColor(frame2, cv2.COLOR_BGR2RGB)
-        # cv2.imwrite(os.path.join(out_path, name_prefix + str(num_images_count)), img_next)
         plt.imsave(os.path.join(out_path, name_prefix + str(num_images_count)+".png"), img_next)
 
 

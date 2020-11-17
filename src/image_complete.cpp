@@ -358,3 +358,91 @@ void patchmatch(Mat a, Mat b, BITMAP *&ann, BITMAP *&annd, Mat dilated_mask, Mat
     }
   }
 }
+
+// Image inpainting algorithm
+void image_complete(Mat im_orig, Mat mask, Mat constraint) {
+
+  // some parameters for scaling
+  int rows = im_orig.rows;
+  int cols = im_orig.cols;
+  //int startscale = (int) -1*ceil(log2(MIN(rows, cols))) + 5;
+  int startscale = -3;
+  double scale = pow(2, startscale);
+
+  cout << "Scaling image by " << scale << endl;
+
+  double t1 = (double)getTickCount();
+
+  // Resize image to starting scale
+  Mat resize_img, resize_mask, resize_constraint;
+  resize(im_orig, resize_img, Size(), scale, scale, INTER_AREA);
+  resize(mask, resize_mask, Size(), scale, scale, INTER_AREA);
+  threshold(resize_mask, resize_mask, 127, 255, 0);
+  resize(constraint, resize_constraint, Size(), scale, scale, INTER_NEAREST);
+
+
+  CMap cm, *cm_ptr;
+  cm_ptr = &cm;
+  getCMap(resize_constraint, cm_ptr);
+
+  // Random starting guess for inpainted image
+  rows = resize_img.rows;
+  cols = resize_img.cols;
+  for (int y = 0; y < rows; ++y) {
+    for (int x = 0; x < cols; ++x) {
+      int mask_pixel = (int) resize_mask.at<uchar>(y, x);
+      if (mask_pixel != 0 && mask_pixel != 255) {
+        cout << "GGGGGGGGGGGGGGG" << endl;
+        exit(1);
+      }
+      // if not black pixel, then means white (1) pixel in mask
+      // means hole, thus random init colors in hole
+      if (mask_pixel != 0) {
+        int const_pixel = (int) resize_constraint.at<uchar>(y, x);
+        if (const_pixel == 0) {
+          resize_img.at<Vec3b>(y, x)[0] = rand() % 256;
+          resize_img.at<Vec3b>(y, x)[1] = rand() % 256;
+          resize_img.at<Vec3b>(y, x)[2] = rand() % 256;
+        } else {
+          unordered_map<int, vector<pair<int, int> > >::iterator got;
+          got = cm_ptr->constraint_map.find(const_pixel);
+          int rand_index = rand() % got->second.size();
+          int nx = got->second[rand_index].first;
+          int ny = got->second[rand_index].second;
+          Vec3b new_pixel = resize_img.at<Vec3b>(ny, nx);
+          resize_img.at<Vec3b>(y, x)[0] = new_pixel[0];
+          resize_img.at<Vec3b>(y, x)[1] = new_pixel[1];
+          resize_img.at<Vec3b>(y, x)[2] = new_pixel[2];
+        }
+      }
+    }
+  }
+
+  double p1 = ((double)getTickCount() - t1) / getTickFrequency();
+  cout << "time for init = " << p1 << endl;
+
+  // DEBUG
+  int index = 0;
+
+  // go through all scale
+  for (int logscale = startscale; logscale <= 0; logscale++) {
+    index++;
+
+    scale = pow(2, logscale);
+
+    cout << "Scaling is " << scale << endl;
+
+    Box mask_box = getBox(resize_mask);
+    // dilate the mask
+    Mat element = Mat::zeros(2*patch_w - 1, 2*patch_w - 1, CV_8UC1);
+    element(Rect(patch_w - 1, patch_w - 1, patch_w, patch_w)) = 255;
+    Mat dilated_mask;
+    dilate(resize_mask, dilated_mask, element);
+
+
+    CMap cmap;
+    CMap* cmap_ptr = &cmap;
+    getCMap(resize_constraint, cmap_ptr);
+
+    
+  }

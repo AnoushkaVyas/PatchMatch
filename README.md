@@ -4,8 +4,6 @@
 ![Python](https://img.shields.io/badge/built--with-C++-green?logo=appveyor&style=for-the-badge)
 ![Python](https://img.shields.io/badge/LICENSE-MIT-blue?logo=appveyor&style=for-the-badge)
 
-Please make sure you follow the project [guidelines](./guidelines.md) carefully.
-
 ## Data
 
 - Different data used for presentation present in: https://drive.google.com/drive/folders/1tC_qaoK0-4rxBmvc9fxqxUzhmyaO-Tlw?usp=sharing

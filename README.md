@@ -1,4 +1,9 @@
 # Project
+![Python](https://img.shields.io/badge/built--with-Python-green?logo=appveyor&style=for-the-badge)
+![Python](https://img.shields.io/badge/built--with-MATLAB-green?logo=appveyor&style=for-the-badge)
+![Python](https://img.shields.io/badge/built--with-C++-green?logo=appveyor&style=for-the-badge)
+![Python](https://img.shields.io/badge/LICENSE-MIT-blue?logo=appveyor&style=for-the-badge)
+
 Please make sure you follow the project [guidelines](./guidelines.md) carefully.
 
 ## Data
